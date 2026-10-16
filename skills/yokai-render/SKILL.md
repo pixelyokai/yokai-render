@@ -70,6 +70,15 @@ key('Enter');
 await click(await waitFor(() => byText('Read more')));
 ```
 
+**The pointer.** There is no real mouse in headless Chrome, so a render without `--script` shows no cursor at all. In a script, a drawn arrow pointer appears the first time you call `click`, `pointer.moveTo` or `pointer.place`, and glides between targets so viewers can follow along. It picks a light or dark fill from the page background so it stays visible.
+
+- Show it: `click(target)`, `pointer.moveTo(el)`, `pointer.place(x, y, ms)`.
+- Click without showing it: `click(target, { pointer: false })`.
+- Hide it: `pointer.hide()`. The next `click`, `moveTo` or `place` shows it again.
+- A cursor-free demo: never call `pointer.*`, and pass `{ pointer: false }` to every `click`.
+
+Ask the user whether they want the pointer when it isn't obvious. Product demos usually do; loops and UI clips usually don't.
+
 What synthetic events can't do: browser defaults don't run (`key('Enter')` won't submit a form by itself, arrow keys won't scroll), and `:hover` styles don't apply. Drive the app's own handlers, which is what most UI libraries listen to anyway.
 
 If the script throws (an element is missing, `waitFor` times out), the render stops with the reason and deletes the partial file, rather than producing a wrong video. Read that message, fix the selector or timing, and re-run.
