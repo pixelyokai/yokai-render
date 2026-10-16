@@ -1,0 +1,5 @@
+renders/
+node_modules/
+*.mp4
+*.mov
+.DS_Store
