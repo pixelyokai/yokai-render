@@ -1,4 +1,4 @@
-# yokai-recorder
+# yokai-render
 
 Frame-perfect videos of anything that runs in a browser, made by your coding agent.
 
@@ -7,10 +7,10 @@ Frame-perfect videos of anything that runs in a browser, made by your coding age
 ![Codex](https://img.shields.io/badge/Codex-Compatible-black)
 ![60fps](https://img.shields.io/badge/output-60fps%20%C2%B7%204K%20%C2%B7%20ProRes-ff5a36)
 
-This repo holds one skill, **yokai-render**. Point it at a page, a component, a CSS or canvas animation, a WebGL shader or a whole web app, and it gives you an MP4, a ProRes file with transparency, or a folder of PNG frames. It can also play a scripted walkthrough (typing, clicks, key presses, with a visible pointer) for product demos, without touching your app's code.
+This repo holds the **yokai-render** skill. Point it at a page, a component, a CSS or canvas animation, a WebGL shader or a whole web app, and it gives you an MP4, a ProRes file with transparency, or a folder of PNG frames. It can also play a scripted walkthrough (typing, clicks, key presses, with a visible pointer) for product demos, without touching your app's code.
 
 ```bash
-npx skills add pixelyokai/yokai-recorder
+npx skills add pixelyokai/yokai-render
 ```
 
 ## Why it exists
@@ -18,8 +18,6 @@ npx skills add pixelyokai/yokai-recorder
 Screen recordings of UI work look worse than the real thing. You get dropped frames, soft pixels and mushy compression, and no setting fixes it, because a recorder runs in real time. Any frame the page can't draw in 16.6ms gets dropped or doubled, the capture is limited to your monitor's pixels, and the encoder trades quality for speed.
 
 yokai-render doesn't record. It renders. It takes over the page's clock (`requestAnimationFrame`, `performance.now`, `Date`, timers, CSS and Web Animations), moves it forward exactly one frame, takes a lossless screenshot at 2× density, and pipes it to ffmpeg. Time only moves when the renderer says so. A shader that needs 200ms per frame still comes out as a perfect 60fps video.
-
-The name says recorder because that's what people ask for. What you get is better than a recording.
 
 ## What you can make with it
 
@@ -48,7 +46,7 @@ The name says recorder because that's what people ask for. What you get is bette
 Works with Claude Code, Cursor, Codex, Windsurf, Copilot and [40+ other agents](https://github.com/vercel-labs/skills#supported-agents):
 
 ```bash
-npx skills add pixelyokai/yokai-recorder
+npx skills add pixelyokai/yokai-render
 ```
 
 The CLI detects your agent. To pick one, add `--agent`, for example `--agent claude-code`.
@@ -65,8 +63,8 @@ Clone the repo and copy `skills/yokai-render` into your agent's skills folder:
 | OpenCode | `~/.config/opencode/skills/` |
 
 ```bash
-git clone https://github.com/pixelyokai/yokai-recorder
-cp -r yokai-recorder/skills/yokai-render ~/.claude/skills/
+git clone https://github.com/pixelyokai/yokai-render
+cp -r yokai-render/skills/yokai-render ~/.claude/skills/
 ```
 
 ### Requirements
@@ -235,6 +233,15 @@ node skills/yokai-render/scripts/render.mjs effect.html --format png --fps 30 --
 | A fallback font | The font loaded late, or `file://` blocked it | Serve over http, or preload the font |
 
 The skill's own instructions, with more detail on every step, are in [skills/yokai-render/SKILL.md](skills/yokai-render/SKILL.md).
+
+## Questions
+
+**Can it record audio?**
+No. Every frame is a screenshot taken on a paused clock, and Chrome runs muted, so there's no sound to capture, and Web Audio or a `<video>` soundtrack can't be kept in sync with a clock that only moves when the renderer says so. Add music or a voiceover afterwards in an editor, or with one ffmpeg command:
+`ffmpeg -i out.mp4 -i music.mp3 -c:v copy -c:a aac -shortest out-with-audio.mp4`
+
+**Will my mouse cursor show up?**
+No. Headless Chrome has no real mouse, so a render without a script has no cursor at all. With `--script`, a drawn pointer appears when you call `click`, `pointer.moveTo` or `pointer.place`, so viewers can follow along. Hide it with `pointer.hide()`, or click without it using `click(target, { pointer: false })`. It picks a light or dark colour to stand out from the page.
 
 ## How it works
 
