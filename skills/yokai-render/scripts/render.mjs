@@ -225,7 +225,9 @@ const HELPERS = `(() => {
   };
 
   // A visible pointer, so viewers can follow what the script does.
-  let el = null, x = innerWidth * 0.6, y = innerHeight * 0.75;
+  // Its motion is tweened on requestAnimationFrame (the virtual clock), never CSS transitions: a transition
+  // starts on the real clock and may be over before the next frame is captured, so the pointer would snap.
+  let el = null, x = innerWidth * 0.6, y = innerHeight * 0.75, opacity = 0, scale = 1, moveId = 0, pressId = 0;
   const ensure = () => {
     if (el) return el;
     const bg = getComputedStyle(document.body).backgroundColor;
@@ -237,32 +239,57 @@ const HELPERS = `(() => {
     el = document.createElement('div');
     el.setAttribute('aria-hidden', 'true');
     el.style.cssText = 'position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;opacity:0;'
-      + 'transition-property:transform,opacity;transition-timing-function:cubic-bezier(0.77,0,0.175,1);'
       + 'filter:drop-shadow(0 2px 3px rgb(0 0 0 / .3));transform:translate(' + x + 'px,' + y + 'px)';
-    el.innerHTML = '<svg width="24" height="26" viewBox="0 0 24 26" fill="none" style="display:block;transform-origin:3px 2px;transition:scale 110ms cubic-bezier(0.23,1,0.32,1)">'
+    el.innerHTML = '<svg width="24" height="26" viewBox="0 0 24 26" fill="none" style="display:block;transform-origin:3px 2px">'
       + '<path d="M3 2.5 20.5 12l-7.6 1.9L9.4 21.6 3 2.5Z" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6" stroke-linejoin="round"/></svg>';
     document.body.append(el);
     return el;
   };
-  const place = (nx, ny, ms) => {
-    const p = ensure(); x = nx; y = ny;
-    p.style.transitionDuration = ms + 'ms, 200ms';
-    p.style.opacity = '1';
+  const paint = () => {
+    const p = ensure();
+    p.style.opacity = String(opacity);
     p.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    p.firstElementChild.style.transform = 'scale(' + scale + ')';
+  };
+  // Runs fn(progress 0..1) once per frame for ms on the virtual clock; resolves when done.
+  const tween = (ms, fn) => new Promise((done) => {
+    const t0 = performance.now();
+    const tick = () => {
+      const p = ms > 0 ? Math.min(1, (performance.now() - t0) / ms) : 1;
+      fn(p);
+      if (p < 1) requestAnimationFrame(tick); else done();
+    };
+    tick();
+  });
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);   // cubic, like a hand moving a mouse
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  const place = (nx, ny, ms) => {
+    ensure();
+    const id = ++moveId, x0 = x, y0 = y, o0 = opacity;
+    return tween(ms, (p) => {
+      if (id !== moveId) return;                       // a newer move took over
+      const e = easeInOut(p);
+      x = x0 + (nx - x0) * e; y = y0 + (ny - y0) * e;
+      opacity = o0 + (1 - o0) * Math.min(1, (p * ms) / 200);
+      paint();
+    });
   };
   const moveTo = async (target, { ms = 650, dx = 0.5, dy = 0.5 } = {}) => {
     const r = resolve(target).getBoundingClientRect();
-    place(r.left + r.width * dx, r.top + r.height * dy, ms);
-    await sleep(ms + 40);
+    await place(r.left + r.width * dx, r.top + r.height * dy, ms);
+    await sleep(40);
   };
   const press = async () => {
-    const svg = ensure().firstElementChild;
-    svg.style.scale = '0.82'; await sleep(110); svg.style.scale = '1';
+    ensure();
+    const id = ++pressId;
+    const to = (target, ms) => { const s0 = scale; return tween(ms, (p) => { if (id !== pressId) return; scale = s0 + (target - s0) * easeOut(p); paint(); }); };
+    await to(0.82, 60);
+    await to(1, 110);
   };
   const pointer = {
     moveTo, press,
     place: (nx, ny, ms = 600) => place(nx, ny, ms),
-    hide: () => { if (el) el.style.opacity = '0'; },
+    hide: () => { if (el) { moveId++; opacity = 0; paint(); } },
   };
 
   const fire = (target, type, Ctor, init) => target.dispatchEvent(new Ctor(type, { bubbles: true, cancelable: true, composed: true, view: window, ...init }));

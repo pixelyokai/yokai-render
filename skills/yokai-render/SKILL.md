@@ -59,7 +59,7 @@ The script is the body of an async function with these in scope:
 | `type(text, { perChar, into })` | Types character by character through real input events; `into` focuses a field and puts the caret at the end first |
 | `key(name, init?, target?)` | keydown + keyup, e.g. `key('Enter')`, `key('k', { metaKey: true, ctrlKey: true })` |
 | `caretToEnd(el)` | Focus and move the caret to the end |
-| `pointer.place(x, y, ms)`, `pointer.moveTo(el)`, `pointer.press()`, `pointer.hide()` | Drive the visible pointer without clicking |
+| `pointer.place(x, y, ms)`, `pointer.moveTo(el)`, `pointer.press()`, `pointer.hide()` | Drive the visible pointer without clicking; `place`, `moveTo` and `press` resolve when the motion ends |
 
 ```js
 // walkthrough.js
